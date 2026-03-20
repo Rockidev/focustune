@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FocusTune — Study Music for Students</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #111118;
+    --card:     #16161f;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.12);
+    --accent:   #7c6aff;
+    --accent2:  #ff6b6b;
+    --accent3:  #00d9a3;
+    --text:     #f0eeff;
+    --muted:    #7a788a;
+    --muted2:   #4a4858;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background orbs ── */
+  .bg-orb {
+    position: fixed; border-radius: 50%; filter: blur(120px);
+    pointer-events: none; z-index: 0;
+  }
+  .orb1 { width: 500px; height: 500px; background: rgba(124,106,255,0.12); top: -100px; left: -100px; }
+  .orb2 { width: 400px; height: 400px; background: rgba(0,217,163,0.08); bottom: -50px; right: -50px; }
+  .orb3 { width: 300px; height: 300px; background: rgba(255,107,107,0.07); top: 50%; left: 50%; transform: translate(-50%,-50%); }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 40px;
+    background: rgba(10,10,15,0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-logo {
+    font-family: var(--font-head);
+    font-size: 20px; font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .nav-links { display: flex; gap: 32px; }
+  .nav-links a {
+    color: var(--muted); text-decoration: none; font-size: 14px;
+    font-weight: 500; transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-btn {
+    background: var(--accent); color: #fff; border: none;
+    padding: 9px 20px; border-radius: 10px; font-size: 13px;
+    font-weight: 600; cursor: pointer; font-family: var(--font-body);
+    transition: opacity .2s, transform .15s;
+  }
+  .nav-btn:hover { opacity: .85; transform: translateY(-1px); }
+
+  /* ── Main layout ── */
+  main {
+    position: relative; z-index: 1;
+    max-width: 760px; margin: 0 auto;
+    padding: 120px 24px 80px;
+  }
+
+  /* ── Hero ── */
+  .hero { text-align: center; margin-bottom: 56px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(124,106,255,0.12); border: 1px solid rgba(124,106,255,0.25);
+    color: #a89fff; font-size: 12px; font-weight: 500;
+    padding: 6px 14px; border-radius: 20px; margin-bottom: 24px;
+    letter-spacing: 0.3px;
+  }
+  .hero-badge span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent3); display: inline-block; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+  h1 {
+    font-family: var(--font-head);
+    font-size: clamp(36px, 6vw, 58px);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 18px;
+  }
+  h1 em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent3) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: 16px; color: var(--muted); line-height: 1.7;
+    max-width: 480px; margin: 0 auto;
+  }
+
+  /* ── Mode toggle ── */
+  .mode-toggle {
+    display: flex; background: var(--card);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 4px; margin-bottom: 24px; width: fit-content;
+  }
+  .mode-btn {
+    font-family: var(--font-body); font-size: 14px; font-weight: 500;
+    padding: 10px 28px; border-radius: 10px; border: none;
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: all .2s;
+  }
+  .mode-btn.active {
+    background: var(--accent); color: #fff;
+    box-shadow: 0 4px 20px rgba(124,106,255,0.35);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 20px; padding: 28px; margin-bottom: 16px;
+  }
+
+  /* ── Describe panel ── */
+  .hint-text { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.6; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .ex {
+    font-size: 12px; padding: 6px 13px; border-radius: 20px;
+    border: 1px solid var(--border2); color: var(--muted);
+    cursor: pointer; transition: all .15s; background: transparent;
+    font-family: var(--font-body);
+  }
+  .ex:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,106,255,0.08); }
+
+  textarea {
+    width: 100%; min-height: 100px; resize: vertical;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border2);
+    border-radius: 12px; padding: 14px 16px; color: var(--text);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+    outline: none; transition: border-color .2s; margin-bottom: 16px;
+  }
+  textarea:focus { border-color: var(--accent); }
+  textarea::placeholder { color: var(--muted2); }
+
+  .lang-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .lang-pill {
+    font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 20px;
+    border: 1px solid var(--border2); color: var(--muted); cursor: pointer;
+    transition: all .15s; background: transparent; font-family: var(--font-body);
+  }
+  .lang-pill.on { background: rgba(0,217,163,0.12); border-color: var(--accent3); color: var(--accent3); }
+
+  /* ── Quick grid ── */
+  .quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .vibe-card {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px; cursor: pointer;
+    transition: all .2s; text-align: left;
+  }
+  .vibe-card:hover { border-color: var(--border2); background: rgba(255,255,255,0.05); transform: translateY(-2px); }
+  .vibe-card.selected { border-color: var(--accent); background: rgba(124,106,255,0.1); box-shadow: 0 0 0 1px var(--accent); }
+  .vibe-name { font-family: var(--font-head); font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .vibe-bpm { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .vibe-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+  /* ── Duration ── */
+  .dur-row { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; align-items: center; }
+  .dur-label { font-size: 13px; color: var(--muted); margin-right: 4px; }
+  .dur-btn {
+    font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 10px;
+    border: 1px solid var(--border2); color: var(--muted); cursor: pointer;
+    transition: all .15s; background: transparent; font-family: var(--font-body);
+  }
+  .dur-btn.on { background: rgba(124,106,255,0.15); border-color: var(--accent); color: var(--accent); }
+
+  /* ── Generate button ── */
+  .gen-btn {
+    width: 100%; padding: 15px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg, var(--accent), #5b4fd4);
+    color: #fff; font-family: var(--font-head); font-size: 16px;
+    font-weight: 700; cursor: pointer; letter-spacing: 0.3px;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(124,106,255,0.4); }
+  .gen-btn:active { transform: translateY(0); }
+  .gen-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+  .gen-btn .spinner {
+    display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%;
+    animation: spin .7s linear infinite; margin: 0 auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Mood result ── */
+  .mood-result {
+    background: rgba(0,217,163,0.06); border: 1px solid rgba(0,217,163,0.2);
+    border-radius: 14px; padding: 16px; margin-top: 16px; display: none;
+  }
+  .mood-result.show { display: block; animation: fadeUp .3s ease; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+  .mood-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .mood-tag-pill {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 8px;
+    background: rgba(0,217,163,0.15); color: var(--accent3); text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .mood-bpm { font-size: 13px; color: var(--muted); }
+  .mood-keywords { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw-pill {
+    font-size: 11px; padding: 3px 9px; border-radius: 8px;
+    background: rgba(255,255,255,0.06); color: var(--muted); border: 1px solid var(--border);
+  }
+
+  /* ── Audio player ── */
+  .player-card {
+    background: var(--card); border: 1px solid rgba(124,106,255,0.3);
+    border-radius: 20px; padding: 28px; margin-bottom: 16px;
+    display: none; animation: fadeUp .4s ease;
+  }
+  .player-card.show { display: block; }
+  .player-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
+  .player-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent3));
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .player-icon svg { width: 22px; height: 22px; fill: #fff; }
+  .player-title { font-family: var(--font-head); font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+  .player-sub { font-size: 13px; color: var(--muted); }
+
+  audio {
+    width: 100%; height: 48px; margin-bottom: 20px;
+    filter: invert(1) hue-rotate(220deg) brightness(0.9);
+    border-radius: 10px;
+  }
+
+  /* ── Feedback ── */
+  .feedback-section { border-top: 1px solid var(--border); padding-top: 18px; }
+  .feedback-label { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .fb-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .fb-btn {
+    flex: 1; padding: 10px 8px; border-radius: 12px;
+    border: 1px solid var(--border2); background: transparent;
+    color: var(--muted); font-family: var(--font-body); font-size: 13px;
+    font-weight: 500; cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .fb-btn:hover { border-color: var(--border2); background: rgba(255,255,255,0.05); }
+  .fb-btn.loved { background: rgba(0,217,163,0.12); border-color: var(--accent3); color: var(--accent3); }
+  .fb-btn.ok    { background: rgba(124,106,255,0.12); border-color: var(--accent); color: var(--accent); }
+  .fb-btn.skip  { background: rgba(255,107,107,0.1); border-color: var(--accent2); color: var(--accent2); }
+  .stars { display: flex; gap: 6px; margin-bottom: 12px; }
+  .star { font-size: 22px; cursor: pointer; color: var(--muted2); transition: color .1s; line-height: 1; }
+  .star.lit { color: #f5c518; }
+  .fb-submit {
+    width: 100%; padding: 11px; border-radius: 12px; border: 1px solid var(--border2);
+    background: transparent; color: var(--muted); font-family: var(--font-body);
+    font-size: 13px; font-weight: 500; cursor: pointer; transition: all .2s;
+  }
+  .fb-submit:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .fb-submit.submitted { background: rgba(0,217,163,0.1); border-color: var(--accent3); color: var(--accent3); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--card); border: 1px solid var(--border2);
+    color: var(--text); padding: 12px 24px; border-radius: 30px;
+    font-size: 13px; font-weight: 500; opacity: 0;
+    transition: all .3s; pointer-events: none; z-index: 999; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Error box ── */
+  .error-box {
+    background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.25);
+    border-radius: 12px; padding: 14px 16px; margin-top: 14px;
+    font-size: 13px; color: #ff9999; line-height: 1.5; display: none;
+  }
+  .error-box.show { display: block; animation: fadeUp .3s ease; }
+
+  /* ── Loading animation ── */
+  .loading-text {
+    text-align: center; padding: 12px 0; font-size: 13px;
+    color: var(--muted); display: none;
+  }
+  .loading-text.show { display: block; }
+  .dot-bounce { display: inline-flex; gap: 4px; margin-left: 6px; }
+  .dot-bounce span {
+    width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+    display: inline-block; animation: bounce .8s infinite ease-in-out;
+  }
+  .dot-bounce span:nth-child(2) { animation-delay: .15s; }
+  .dot-bounce span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+
+  @media (max-width: 500px) {
+    nav { padding: 14px 20px; }
+    .nav-links { display: none; }
+    main { padding: 90px 16px 60px; }
+    .quick-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-orb orb1"></div>
+<div class="bg-orb orb2"></div>
+<div class="bg-orb orb3"></div>
+
+<nav>
+  <div class="nav-logo">FocusTune</div>
+  <div class="nav-links">
+    <a href="#" onclick="scrollToTop()">Home</a>
+    <a href="#" onclick="loadProfile()">My Profile</a>
+    <a href="#" onclick="connectSpotify()">Connect Spotify</a>
+  </div>
+  <button class="nav-btn" onclick="googleLogin()">Sign in with Google</button>
+</nav>
+
+<main>
+  <div class="hero">
+    <h1>Music that <em>matches</em><br>how you study</h1>
+    <p class="hero-sub">Tell us what you're studying and we generate music matched exactly to your focus state. Learns your taste over time.</p>
+  </div>
+
+  <!-- Mode toggle -->
+  <div style="display:flex;justify-content:center;margin-bottom:28px">
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="switchMode(this,'describe')">Describe it</button>
+      <button class="mode-btn" onclick="switchMode(this,'quick')">Quick pick</button>
+    </div>
+  </div>
+
+  <!-- Describe panel -->
+  <div id="panel-describe">
+    <div class="card">
+      <p class="hint-text">Type what you're studying — in English, Hindi, or Hinglish.</p>
+      <textarea id="describe-input" maxlength="300" oninput="document.getElementById('char-count').textContent=this.value.length" placeholder="e.g. Studying organic chemistry, exam in 2 days, feeling stressed..."></textarea>
+      <div style="text-align:right;font-size:11px;color:var(--muted2);margin-top:-12px;margin-bottom:14px"><span id="char-count">0</span> / 300</div>
+      <div class="lang-row" id="lang-row">
+        <button class="lang-pill on" onclick="pickLang(this)">Auto detect</button>
+        <button class="lang-pill" onclick="pickLang(this)">English</button>
+        <button class="lang-pill" onclick="pickLang(this)">Hindi</button>
+        <button class="lang-pill" onclick="pickLang(this)">Hinglish</button>
+      </div>
+      <button class="gen-btn" id="gen-describe-btn" onclick="generateDescribe()">
+        <span id="gen-describe-text">Generate my study music</span>
+        <div class="spinner" id="gen-describe-spinner"></div>
+      </button>
+      <div class="mood-result" id="mood-result">
+        <div class="mood-top">
+          <span class="mood-tag-pill" id="mood-tag-text">—</span>
+          <span class="mood-bpm" id="mood-bpm-text">—</span>
+        </div>
+        <div class="mood-keywords" id="mood-keywords"></div>
+      </div>
+      <div class="error-box" id="describe-error"></div>
+      <div class="loading-text" id="describe-loading">
+        Generating your music <div class="dot-bounce"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick panel -->
+  <div id="panel-quick" style="display:none">
+    <div class="card">
+      <div class="quick-grid">
+        <div class="vibe-card" onclick="selectVibe(this,'ultra_focus')">
+          <div class="vibe-name">Ultra focus</div>
+          <div class="vibe-bpm">55 BPM · minimal</div>
+          <div class="vibe-desc">DSA, Maths, JEE — zero distraction</div>
+        </div>
+        <div class="vibe-card" onclick="selectVibe(this,'deep_calm')">
+          <div class="vibe-name">Deep calm</div>
+          <div class="vibe-bpm">62 BPM · ambient</div>
+          <div class="vibe-desc">NEET Bio, long reading, no pressure</div>
+        </div>
+        <div class="vibe-card" onclick="selectVibe(this,'exam_crunch')">
+          <div class="vibe-name">Exam crunch</div>
+          <div class="vibe-bpm">58 BPM · tense focus</div>
+          <div class="vibe-desc">Night before exam, high stress revision</div>
+        </div>
+        <div class="vibe-card" onclick="selectVibe(this,'light_review')">
+          <div class="vibe-name">Light review</div>
+          <div class="vibe-bpm">75 BPM · warm lo-fi</div>
+          <div class="vibe-desc">Revising topics you already know</div>
+        </div>
+        <div class="vibe-card" onclick="selectVibe(this,'creative_flow')">
+          <div class="vibe-name">Creative flow</div>
+          <div class="vibe-bpm">72 BPM · jazz lo-fi</div>
+          <div class="vibe-desc">Assignments, projects, MBA writing</div>
+        </div>
+        <div class="vibe-card" onclick="selectVibe(this,'memory_mode')">
+          <div class="vibe-name">Memory mode</div>
+          <div class="vibe-bpm">65 BPM · drone waves</div>
+          <div class="vibe-desc">Memorising facts, dates, formulas</div>
+        </div>
+      </div>
+      <div class="dur-row">
+        <span class="dur-label">Duration:</span>
+        <button class="dur-btn on" onclick="pickDur(this,15)">15 min</button>
+        <button class="dur-btn" onclick="pickDur(this,30)">30 min</button>
+        <button class="dur-btn" onclick="pickDur(this,45)">45 min</button>
+        <button class="dur-btn" onclick="pickDur(this,60)">1 hour</button>
+      </div>
+      <button class="gen-btn" id="gen-quick-btn" onclick="generateQuick()">
+        <span id="gen-quick-text">Generate my study music</span>
+        <div class="spinner" id="gen-quick-spinner"></div>
+      </button>
+      <div class="error-box" id="quick-error"></div>
+      <div class="loading-text" id="quick-loading">
+        Generating your music <div class="dot-bounce"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio player -->
+  <div class="player-card" id="player-card">
+    <div class="player-header">
+      <div class="player-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+      </div>
+      <div>
+        <div class="player-title" id="player-title">Your study music</div>
+        <div class="player-sub" id="player-sub">—</div>
+      </div>
+    </div>
+    <audio id="audio-player" controls></audio>
+    <div class="feedback-section">
+      <div class="feedback-label">How was this music? Your feedback trains your personal model.</div>
+      <div class="fb-row">
+        <button class="fb-btn" id="fb-loved" onclick="pickReaction('loved')">Loved it</button>
+        <button class="fb-btn" id="fb-ok"    onclick="pickReaction('ok')">It's OK</button>
+        <button class="fb-btn" id="fb-skip"  onclick="pickReaction('skip')">Skip</button>
+      </div>
+      <div class="stars" id="stars">
+        <span class="star" onclick="rateStar(1)">★</span>
+        <span class="star" onclick="rateStar(2)">★</span>
+        <span class="star" onclick="rateStar(3)">★</span>
+        <span class="star" onclick="rateStar(4)">★</span>
+        <span class="star" onclick="rateStar(5)">★</span>
+      </div>
+      <button class="fb-submit" id="fb-submit-btn" onclick="submitFeedback()">Save feedback</button>
+    </div>
+  </div>
+
+
+  <!-- How it works -->
+  <div style="margin-top:48px;margin-bottom:48px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-family:var(--font-head);font-size:22px;font-weight:700;margin-bottom:8px">How it works</div>
+      <div style="font-size:14px;color:var(--muted)">Three steps. Zero effort.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:12px">📝</div>
+        <div style="font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:6px">Describe or pick</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Type what you are studying or tap a quick vibe preset</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:12px">🎵</div>
+        <div style="font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:6px">AI generates music</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Claude reads your mood, MusicGen creates a custom track in seconds</div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px 20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:12px">🧠</div>
+        <div style="font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:6px">It learns your taste</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">Give feedback after each track — your music gets more personal every session</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats strip -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:48px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center">
+      <div style="font-family:var(--font-head);font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent">6</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Vibe modes</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center">
+      <div style="font-family:var(--font-head);font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent">3</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Languages</div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center">
+      <div style="font-family:var(--font-head);font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent">AI</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Personalised</div>
+    </div>
+  </div>
+
+  <!-- Session history -->
+  <div id="history-section" style="margin-top:8px">
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Recent sessions</div>
+    <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="history-empty" style="font-size:13px;color:var(--muted2);padding:16px 0">No sessions yet — generate your first music above.</div>
+  </div>
+  <!-- Profile section (shown when clicking My Profile) -->
+  <div id="profile-section" style="display:none;margin-top:8px">
+    <div class="card" id="profile-content"></div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = 'http://localhost:8000';
+  let currentSessionId = null;
+  let selectedVibe     = null;
+  let selectedDuration = 15;
+  let selectedLang     = 'auto';
+  let selectedReaction = null;
+  let selectedRating   = null;
+  let listenStart      = null;
+
+  // ── Auth ─────────────────────────────────────────────────
+  function googleLogin() {
+    window.location.href = `${API}/auth/google`;
+  }
+
+  function connectSpotify() {
+    window.location.href = `${API}/auth/spotify`;
+  }
+
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Check if came back from Google OAuth callback
+  (function checkAuthCallback() {
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token');
+    if (token) {
+      localStorage.setItem('ft_token', token);
+      window.history.replaceState({}, '', window.location.pathname);
+      showToast('Signed in successfully!');
+      updateNavForLoggedIn();
+    }
+    const spotifyStatus = params.get('spotify');
+    if (spotifyStatus === 'connected') {
+      showToast('Spotify connected! Your taste is being learned.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (localStorage.getItem('ft_token')) updateNavForLoggedIn();
+  })();
+
+  function updateNavForLoggedIn() {
+    const btn = document.querySelector('.nav-btn');
+    if (btn) { btn.textContent = 'My Profile'; btn.onclick = loadProfile; }
+  }
+
+  function getAuthHeaders() {
+    const token = localStorage.getItem('ft_token');
+    return token ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                 : { 'Content-Type': 'application/json' };
+  }
+
+  // ── Mode switch ──────────────────────────────────────────
+  function switchMode(btn, mode) {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-describe').style.display = mode === 'describe' ? 'block' : 'none';
+    document.getElementById('panel-quick').style.display    = mode === 'quick'    ? 'block' : 'none';
+    document.getElementById('player-card').classList.remove('show');
+  }
+
+  // ── Language ─────────────────────────────────────────────
+  function pickLang(el) {
+    document.querySelectorAll('.lang-pill').forEach(p => p.classList.remove('on'));
+    el.classList.add('on');
+    selectedLang = el.textContent.toLowerCase().replace(' ', '_');
+    if (selectedLang === 'auto_detect') selectedLang = 'auto';
+  }
+
+  // ── Vibe ─────────────────────────────────────────────────
+  function selectVibe(card, vibe) {
+    document.querySelectorAll('.vibe-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedVibe = vibe;
+  }
+
+  // ── Duration ─────────────────────────────────────────────
+  function pickDur(el, val) {
+    document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('on'));
+    el.classList.add('on');
+    selectedDuration = val;
+  }
+
+  // ── Generate describe ────────────────────────────────────
+  async function generateDescribe() {
+    const desc = document.getElementById('describe-input').value.trim();
+    if (!desc) { showToast('Type what you are studying first!'); return; }
+    setLoading('describe', true);
+    hideError('describe-error');
+    try {
+      const res = await fetch(`${API}/music/describe`, {
+        method:  'POST',
+        headers: getAuthHeaders(),
+        body:    JSON.stringify({ description: desc, language: selectedLang, duration: selectedDuration }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
+      const data = await res.json();
+      showMoodResult(data);
+      await loadAudio(data.session_id, data.mood_tag, data.bpm, 'describe');
+    } catch (e) {
+      showError('describe-error', e.message.includes('Failed to fetch')
+        ? 'Cannot reach server. Is uvicorn running on localhost:8000?'
+        : e.message);
+    } finally { setLoading('describe', false); }
+  }
+
+  // ── Generate quick ───────────────────────────────────────
+  async function generateQuick() {
+    if (!selectedVibe) { showToast('Pick a vibe first!'); return; }
+    setLoading('quick', true);
+    hideError('quick-error');
+    try {
+      const res = await fetch(`${API}/music/quick`, {
+        method:  'POST',
+        headers: getAuthHeaders(),
+        body:    JSON.stringify({ vibe: selectedVibe, duration: selectedDuration }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || 'Server error'); }
+      const data = await res.json();
+      await loadAudio(data.session_id, data.mood_tag, data.bpm, 'quick');
+    } catch (e) {
+      showError('quick-error', e.message.includes('Failed to fetch')
+        ? 'Cannot reach server. Is uvicorn running on localhost:8000?'
+        : e.message);
+    } finally { setLoading('quick', false); }
+  }
+
+  // ── Load audio ───────────────────────────────────────────
+  async function loadAudio(sessionId, moodTag, bpm, inputType) {
+    currentSessionId = sessionId;
+    listenStart      = Date.now();
+    const player     = document.getElementById('audio-player');
+    player.src       = `${API}/music/audio/${sessionId}`;
+    player.load();
+    document.getElementById('player-title').textContent = formatMoodTag(moodTag) + ' session';
+    document.getElementById('player-sub').textContent   = `${bpm} BPM`;
+    const card = document.getElementById('player-card');
+    card.classList.add('show');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    resetFeedback();
+    addToHistory(sessionId, moodTag, bpm, inputType || 'session');
+    showToast('Music ready! Press play.');
+  }
+
+  // ── Replay from history ──────────────────────────────────
+  function replaySession(sessionId, moodTag, bpm) {
+    currentSessionId = sessionId;
+    listenStart      = Date.now();
+    const player     = document.getElementById('audio-player');
+    player.src       = `${API}/music/audio/${sessionId}`;
+    player.load();
+    document.getElementById('player-title').textContent = formatMoodTag(moodTag) + ' session';
+    document.getElementById('player-sub').textContent   = `${bpm} BPM · replaying`;
+    document.getElementById('player-card').classList.add('show');
+    document.getElementById('player-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    resetFeedback();
+    showToast('Replaying — ' + formatMoodTag(moodTag));
+  }
+
+  // ── Mood result ──────────────────────────────────────────
+  function showMoodResult(data) {
+    document.getElementById('mood-tag-text').textContent = formatMoodTag(data.mood_tag);
+    document.getElementById('mood-bpm-text').textContent = `${data.bpm} BPM`;
+    const kw = document.getElementById('mood-keywords');
+    kw.innerHTML = (data.style_keywords || []).map(k => `<span class="kw-pill">${k}</span>`).join('');
+    document.getElementById('mood-result').classList.add('show');
+  }
+
+  function formatMoodTag(tag) {
+    return tag ? tag.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase()) : '—';
+  }
+
+  // ── Feedback ─────────────────────────────────────────────
+  function pickReaction(r) {
+    selectedReaction = r;
+    ['loved','ok','skip'].forEach(x => {
+      document.getElementById('fb-' + x).classList.remove('loved','ok','skip');
+    });
+    document.getElementById('fb-' + r).classList.add(r);
+  }
+
+  function rateStar(n) {
+    selectedRating = n;
+    document.querySelectorAll('.star').forEach((s,i) => s.classList.toggle('lit', i < n));
+  }
+
+  async function submitFeedback() {
+    if (!currentSessionId || !selectedReaction) { showToast('Pick a reaction first!'); return; }
+    const listenSec = listenStart ? Math.round((Date.now() - listenStart) / 1000) : 0;
+    try {
+      const res = await fetch(`${API}/feedback/`, {
+        method:  'POST',
+        headers: getAuthHeaders(),
+        body:    JSON.stringify({
+          session_id:          currentSessionId,
+          reaction:            selectedReaction,
+          rating:              selectedRating,
+          listen_duration_sec: listenSec,
+        }),
+      });
+      if (!res.ok) throw new Error('Could not save');
+      const btn = document.getElementById('fb-submit-btn');
+      btn.textContent = 'Saved! Your model is learning.';
+      btn.classList.add('submitted');
+      showToast('Feedback saved — music gets more personal each time');
+    } catch (e) {
+      showToast('Error saving feedback: ' + e.message);
+    }
+  }
+
+  function resetFeedback() {
+    selectedReaction = null; selectedRating = null;
+    ['loved','ok','skip'].forEach(x => document.getElementById('fb-'+x).className='fb-btn');
+    document.querySelectorAll('.star').forEach(s => s.classList.remove('lit'));
+    const btn = document.getElementById('fb-submit-btn');
+    btn.textContent = 'Save feedback';
+    btn.classList.remove('submitted');
+  }
+
+  // ── Session history (localStorage) ──────────────────────
+  let sessionHistory = JSON.parse(localStorage.getItem('ft_history') || '[]');
+
+  function addToHistory(sessionId, moodTag, bpm, inputType) {
+    sessionHistory.unshift({ sessionId, moodTag, bpm, inputType, time: new Date().toLocaleTimeString() });
+    if (sessionHistory.length > 8) sessionHistory = sessionHistory.slice(0, 8);
+    localStorage.setItem('ft_history', JSON.stringify(sessionHistory));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const list  = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+    if (!sessionHistory.length) { empty.style.display='block'; list.innerHTML=''; return; }
+    empty.style.display = 'none';
+    list.innerHTML = sessionHistory.map(s => `
+      <div onclick="replaySession('${s.sessionId}','${s.moodTag}',${s.bpm})"
+           style="display:flex;align-items:center;justify-content:space-between;
+                  background:var(--card);border:1px solid var(--border);border-radius:12px;
+                  padding:12px 16px;cursor:pointer;transition:border-color .15s"
+           onmouseover="this.style.borderColor='var(--border2)'"
+           onmouseout="this.style.borderColor='var(--border)'">
+        <div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:2px">${formatMoodTag(s.moodTag)}</div>
+          <div style="font-size:11px;color:var(--muted)">${s.bpm} BPM · ${s.inputType} · ${s.time}</div>
+        </div>
+        <div style="font-size:11px;color:var(--accent);font-weight:500">Replay</div>
+      </div>`).join('');
+  }
+
+  renderHistory();
+
+  // ── Profile panel ────────────────────────────────────────
+  async function loadProfile() {
+    const profileSection = document.getElementById('profile-section');
+    if (profileSection.style.display === 'block') {
+      profileSection.style.display = 'none'; return;
+    }
+    profileSection.style.display = 'block';
+    profileSection.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('profile-content').innerHTML =
+      '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Loading your profile...</div>';
+    try {
+      const res = await fetch(`${API}/profile/`, { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Not logged in');
+      const data = await res.json();
+      renderProfile(data);
+    } catch (e) {
+      document.getElementById('profile-content').innerHTML =
+        `<div style="text-align:center;padding:24px;font-size:13px;color:var(--muted)">
+          Sign in with Google to see your full profile and learned preferences.
+          <br><br>
+          <button onclick="googleLogin()" style="background:var(--accent);color:#fff;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600">Sign in with Google</button>
+        </div>`;
+    }
+  }
+
+  function renderProfile(data) {
+    const prefs = (data.learned_prefs || []).map(p => `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:500">${formatMoodTag(p.mood_tag)}</span>
+          <span style="font-size:11px;color:var(--muted)">${p.preferred_bpm ? Math.round(p.preferred_bpm)+' BPM' : 'learning...'} · ${p.sample_count} sessions</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${Math.round(p.love_rate*100)}%;background:var(--accent3);border-radius:3px;transition:width .5s"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">${(p.top_keywords||[]).slice(0,3).join(' · ') || 'no keywords yet'}</div>
+      </div>`).join('') || '<div style="font-size:13px;color:var(--muted2)">Generate a few sessions and give feedback to build your profile.</div>';
+
+    const spotify = data.spotify_taste
+      ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+           <span style="font-size:12px;padding:4px 10px;border-radius:8px;background:rgba(0,217,163,0.1);color:var(--accent3);border:1px solid rgba(0,217,163,0.2)">${data.spotify_taste.avg_bpm} BPM avg</span>
+           <span style="font-size:12px;padding:4px 10px;border-radius:8px;background:rgba(0,217,163,0.1);color:var(--accent3);border:1px solid rgba(0,217,163,0.2)">Energy ${Math.round(data.spotify_taste.energy*100)}%</span>
+           ${(data.spotify_taste.top_genres||[]).slice(0,2).map(g=>`<span style="font-size:12px;padding:4px 10px;border-radius:8px;background:rgba(0,217,163,0.1);color:var(--accent3);border:1px solid rgba(0,217,163,0.2)">${g}</span>`).join('')}
+         </div>`
+      : `<button onclick="connectSpotify()" style="margin-top:10px;font-size:12px;padding:7px 16px;border-radius:10px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-family:var(--font-body)">Connect Spotify for instant personalization</button>`;
+
+    document.getElementById('profile-content').innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        ${data.user.avatar_url ? `<img src="${data.user.avatar_url}" style="width:44px;height:44px;border-radius:50%">` : `<div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px">${data.user.name[0]}</div>`}
+        <div>
+          <div style="font-weight:600;font-size:15px">${data.user.name}</div>
+          <div style="font-size:12px;color:var(--muted)">${data.user.email}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:700">${data.total_sessions}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Sessions</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:700">${data.total_listen_hours}h</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Listen time</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:22px;font-weight:700">${Math.round(data.overall_love_rate*100)}%</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Love rate</div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Your Spotify taste</div>
+      ${spotify}
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:20px;margin-bottom:12px">Learned preferences</div>
+      ${prefs}`;
+  }
+
+  // ── Loading state ────────────────────────────────────────
+  function setLoading(mode, on) {
+    const btn     = document.getElementById(`gen-${mode}-btn`);
+    const txt     = document.getElementById(`gen-${mode}-text`);
+    const spinner = document.getElementById(`gen-${mode}-spinner`);
+    const loading = document.getElementById(`${mode}-loading`);
+    btn.disabled  = on;
+    txt.style.display     = on ? 'none'  : 'inline';
+    spinner.style.display = on ? 'block' : 'none';
+    loading.classList.toggle('show', on);
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = 'Error: ' + msg; el.classList.add('show');
+  }
+  function hideError(id) { document.getElementById(id).classList.remove('show'); }
+
+  // ── Toast ────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>

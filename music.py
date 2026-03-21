@@ -1,7 +1,6 @@
 import os
 import uuid
-import scipy
-import numpy as np
+import httpx
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -9,6 +8,8 @@ load_dotenv()
 
 MUSIC_OUTPUT_DIR = os.getenv("MUSIC_OUTPUT_DIR", "./audio_output")
 os.makedirs(MUSIC_OUTPUT_DIR, exist_ok=True)
+
+HF_SPACE_URL = "https://centroidals-focustune-music.hf.space/generate"
 
 _model = None
 _processor = None
@@ -103,32 +104,17 @@ def get_preset(vibe, spotify_taste=None):
 
 
 async def generate_audio(prompt: str, duration: int = 30) -> str:
-    processor, model = _load_model()
+    filename = str(uuid.uuid4())
+    output_path = os.path.join(MUSIC_OUTPUT_DIR, f"{filename}.wav")
 
-    # ~51 tokens per second, max 1503 tokens (~30s)
-    max_tokens = min(duration * 51, 1503)
-
-    inputs = processor(
-        text=[prompt],
-        padding=True,
-        return_tensors="pt",
-    )
-
-    audio_values = model.generate(
-        **inputs,
-        do_sample=True,
-        guidance_scale=3,
-        max_new_tokens=max_tokens,
-    )
-
-    filename      = str(uuid.uuid4())
-    output_path   = os.path.join(MUSIC_OUTPUT_DIR, f"{filename}.wav")
-    sampling_rate = model.config.audio_encoder.sampling_rate
-
-    scipy.io.wavfile.write(
-        output_path,
-        rate=sampling_rate,
-        data=audio_values[0, 0].numpy(),
-    )
+    async with httpx.AsyncClient(timeout=300.0) as client:
+        response = await client.post(
+            HF_SPACE_URL,
+            json={"prompt": prompt, "duration": duration},
+        )
+        if response.status_code != 200:
+            raise Exception(f"Music generation failed: {response.status_code}")
+        with open(output_path, "wb") as f:
+            f.write(response.content)
 
     return output_path

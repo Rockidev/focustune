@@ -1,15 +1,17 @@
 import os
 import uuid
-import httpx
+import scipy
+import numpy as np
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 MUSIC_OUTPUT_DIR = os.getenv("MUSIC_OUTPUT_DIR", "./audio_output")
 os.makedirs(MUSIC_OUTPUT_DIR, exist_ok=True)
 
-# HuggingFace Inference API — free tier, no local install needed
-# Get your free token at huggingface.co/settings/tokens
-HF_TOKEN  = os.getenv("HF_TOKEN", "")
-HF_URL    = "https://api-inference.huggingface.co/models/facebook/musicgen-small"
+_model = None
+_processor = None
 
 VIBE_PRESETS = {
     "ultra_focus": {
@@ -57,12 +59,18 @@ VIBE_PRESETS = {
 }
 
 
-def mood_to_musicgen_prompt(
-    mood_tag: str,
-    bpm: int,
-    style_keywords: list,
-    spotify_taste: Optional[dict] = None,
-) -> str:
+def _load_model():
+    global _model, _processor
+    if _model is None:
+        print("Loading MusicGen model — first time takes 1-2 minutes, please wait...")
+        from transformers import AutoProcessor, MusicgenForConditionalGeneration
+        _processor = AutoProcessor.from_pretrained("facebook/musicgen-small")
+        _model     = MusicgenForConditionalGeneration.from_pretrained("facebook/musicgen-small")
+        print("MusicGen model loaded and ready!")
+    return _processor, _model
+
+
+def mood_to_musicgen_prompt(mood_tag, bpm, style_keywords, spotify_taste=None):
     keywords_str = ", ".join(style_keywords)
     prompt = f"{keywords_str}, {bpm}bpm, study music, instrumental"
     if spotify_taste:
@@ -79,56 +87,48 @@ def mood_to_musicgen_prompt(
     return prompt
 
 
-def get_preset(vibe: str, spotify_taste: Optional[dict] = None) -> dict:
+def get_preset(vibe, spotify_taste=None):
     preset = VIBE_PRESETS.get(vibe, VIBE_PRESETS["ultra_focus"]).copy()
     bpm = preset["bpm"]
     if spotify_taste and spotify_taste.get("avg_bpm"):
         bpm = int(bpm + (spotify_taste["avg_bpm"] - bpm) * 0.15)
         bpm = max(50, min(90, bpm))
-    prompt = preset["prompt"]
     return {
         "mood_tag":       preset["mood_tag"],
         "bpm":            bpm,
         "energy_level":   preset["energy_level"],
         "style_keywords": preset["style_keywords"],
-        "music_prompt":   prompt,
+        "music_prompt":   preset["prompt"],
     }
 
 
 async def generate_audio(prompt: str, duration: int = 30) -> str:
-    """
-    Call HuggingFace Inference API for MusicGen.
-    Returns path to saved .wav file.
+    processor, model = _load_model()
 
-    Get free HF token at huggingface.co/settings/tokens
-    Add to .env: HF_TOKEN=hf_...
-    """
-    filename = str(uuid.uuid4())
-    output_path = os.path.join(MUSIC_OUTPUT_DIR, f"{filename}.wav")
+    # ~51 tokens per second, max 1503 tokens (~30s)
+    max_tokens = min(duration * 51, 1503)
 
-    headers = {}
-    if HF_TOKEN:
-        headers["Authorization"] = f"Bearer {HF_TOKEN}"
+    inputs = processor(
+        text=[prompt],
+        padding=True,
+        return_tensors="pt",
+    )
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            HF_URL,
-            headers=headers,
-            json={
-                "inputs": prompt,
-                "parameters": {"max_new_tokens": duration * 50},
-            },
-        )
+    audio_values = model.generate(
+        **inputs,
+        do_sample=True,
+        guidance_scale=3,
+        max_new_tokens=max_tokens,
+    )
 
-        if response.status_code == 503:
-            # Model is loading — happens on first call, wait and retry
-            raise Exception("MusicGen model is loading on HuggingFace, wait 20 seconds and try again")
+    filename      = str(uuid.uuid4())
+    output_path   = os.path.join(MUSIC_OUTPUT_DIR, f"{filename}.wav")
+    sampling_rate = model.config.audio_encoder.sampling_rate
 
-        if response.status_code != 200:
-            raise Exception(f"HuggingFace API error: {response.status_code} — {response.text}")
-
-        # Save audio bytes to file
-        with open(output_path, "wb") as f:
-            f.write(response.content)
+    scipy.io.wavfile.write(
+        output_path,
+        rate=sampling_rate,
+        data=audio_values[0, 0].numpy(),
+    )
 
     return output_path

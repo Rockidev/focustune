@@ -6,6 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from jose import jwt
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from Database import get_db, User
 from spotify import get_auth_url, exchange_code_for_token, get_spotify_taste
@@ -13,10 +16,10 @@ import json
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI")
-JWT_SECRET           = os.getenv("JWT_SECRET", "changeme")
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
+JWT_SECRET           = os.getenv("JWT_SECRET", "focustune-dev-secret-change-in-production")
 JWT_ALGORITHM        = "HS256"
 JWT_EXPIRE_MINUTES   = 10080
 FRONTEND_URL         = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -43,14 +46,21 @@ def get_current_user_id(token: str) -> str:
 
 @router.get("/google")
 def google_login():
-    params = (
-        f"?client_id={GOOGLE_CLIENT_ID}"
-        f"&redirect_uri={GOOGLE_REDIRECT_URI}"
-        f"&response_type=code"
-        f"&scope=openid email profile"
-        f"&access_type=offline"
-    )
-    return RedirectResponse(f"https://accounts.google.com/o/oauth2/auth{params}")
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=500,
+            detail="GOOGLE_CLIENT_ID not set in .env — add it and restart uvicorn"
+        )
+    from urllib.parse import urlencode
+    params = urlencode({
+        "client_id":     GOOGLE_CLIENT_ID,
+        "redirect_uri":  GOOGLE_REDIRECT_URI,
+        "response_type": "code",
+        "scope":         "openid email profile",
+        "access_type":   "offline",
+        "prompt":        "select_account",
+    })
+    return RedirectResponse(f"https://accounts.google.com/o/oauth2/v2/auth?{params}")
 
 
 @router.get("/google/callback")

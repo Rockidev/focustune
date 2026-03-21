@@ -100,7 +100,9 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         db.refresh(user)
 
     token = create_jwt(user.id)
-    return RedirectResponse(f"{FRONTEND_URL}/auth/callback?token={token}")
+
+
+return RedirectResponse(f"{FRONTEND_URL}/index.html?token={token}")
 
 
 # ── Spotify OAuth ─────────────────────────────────────────

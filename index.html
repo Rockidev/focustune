@@ -493,6 +493,14 @@
     </div>
   </div>
 
+  <!-- Taste recovery banner — shown when user has history -->
+  <div id="taste-banner" style="display:none;background:rgba(124,106,255,0.08);border:1px solid rgba(124,106,255,0.2);border-radius:16px;padding:16px 20px;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Welcome back</div>
+    <div style="font-size:14px;font-weight:500;margin-bottom:6px" id="taste-headline">Your music is ready</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap" id="taste-chips"></div>
+    <button onclick="generateFromTaste()" style="margin-top:12px;font-size:13px;font-weight:600;padding:9px 20px;border-radius:10px;border:none;background:var(--accent);color:#fff;cursor:pointer;font-family:var(--font-body)">Play my usual vibe</button>
+  </div>
+
   <!-- Session history -->
   <div id="history-section" style="margin-top:8px">
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Recent sessions</div>
@@ -509,7 +517,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const API = 'http://localhost:8000';
+  const API = 'https://focustune.onrender.com';
   let currentSessionId = null;
   let selectedVibe     = null;
   let selectedDuration = 15;
@@ -759,7 +767,59 @@
 
   renderHistory();
 
-  // ── Profile panel ────────────────────────────────────────
+  // ── Taste recovery — runs on every page load ─────────────
+  function loadTasteBanner() {
+    if (!sessionHistory.length) return;
+
+    const moodCounts = {};
+    const moodBpms   = {};
+    sessionHistory.forEach(s => {
+      if (!s.moodTag) return;
+      moodCounts[s.moodTag] = (moodCounts[s.moodTag] || 0) + 1;
+      moodBpms[s.moodTag]   = s.bpm;
+    });
+
+    const topMood = Object.entries(moodCounts).sort((a,b) => b[1]-a[1])[0];
+    if (!topMood) return;
+
+    const [moodTag, count] = topMood;
+    const bpm = moodBpms[moodTag] || 60;
+
+    const moodToVibe = {
+      'deep_focus':    'ultra_focus',
+      'exam_crunch':   'exam_crunch',
+      'deep_calm':     'deep_calm',
+      'light_review':  'light_review',
+      'creative_flow': 'creative_flow',
+      'memory_mode':   'memory_mode',
+    };
+    window._tasteBannerVibe = moodToVibe[moodTag] || 'ultra_focus';
+
+    document.getElementById('taste-headline').textContent =
+      `Based on your history — ${formatMoodTag(moodTag)} suits you best`;
+
+    const chips = [
+      { label: `${bpm} BPM`,                          color:'rgba(124,106,255,0.15)', text:'#a89fff' },
+      { label: `${count} session${count>1?'s':''}`,   color:'rgba(0,217,163,0.1)',    text:'var(--accent3)' },
+      { label: formatMoodTag(moodTag),                 color:'rgba(255,255,255,0.06)', text:'var(--muted)' },
+    ];
+    document.getElementById('taste-chips').innerHTML = chips.map(c =>
+      `<span style="font-size:12px;padding:4px 11px;border-radius:10px;background:${c.color};color:${c.text};font-weight:500">${c.label}</span>`
+    ).join('');
+
+    document.getElementById('taste-banner').style.display = 'block';
+  }
+
+  function generateFromTaste() {
+    const vibe = window._tasteBannerVibe || 'ultra_focus';
+    selectedVibe = vibe;
+    document.querySelectorAll('.vibe-card').forEach(c => c.classList.remove('selected'));
+    const quickBtn = document.querySelectorAll('.mode-btn')[1];
+    switchMode(quickBtn, 'quick');
+    generateQuick();
+  }
+
+  loadTasteBanner();
   async function loadProfile() {
     const profileSection = document.getElementById('profile-section');
     if (profileSection.style.display === 'block') {

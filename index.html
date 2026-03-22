@@ -267,6 +267,22 @@
   .fb-submit:hover { background: rgba(255,255,255,0.05); color: var(--text); }
   .fb-submit.submitted { background: rgba(0,217,163,0.1); border-color: var(--accent3); color: var(--accent3); }
 
+  /* ── Server status indicator ── */
+  .server-status {
+    position: fixed; bottom: 20px; right: 20px; z-index: 999;
+    display: flex; align-items: center; gap: 7px;
+    background: var(--card); border: 1px solid var(--border2);
+    padding: 8px 14px; border-radius: 20px; font-size: 12px;
+    color: var(--muted); transition: all .3s;
+  }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted2); transition: background .3s;
+  }
+  .status-dot.online  { background: var(--accent3); }
+  .status-dot.offline { background: var(--accent2); }
+  .status-dot.waking  { background: #f5c518; animation: pulse 1s infinite; }
+
   /* ── Toast ── */
   .toast {
     position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
@@ -451,7 +467,6 @@
     </div>
   </div>
 
-
   <!-- How it works -->
   <div style="margin-top:48px;margin-bottom:48px">
     <div style="text-align:center;margin-bottom:28px">
@@ -493,7 +508,7 @@
     </div>
   </div>
 
-  <!-- Taste recovery banner — shown when user has history -->
+  <!-- Taste recovery banner -->
   <div id="taste-banner" style="display:none;background:rgba(124,106,255,0.08);border:1px solid rgba(124,106,255,0.2);border-radius:16px;padding:16px 20px;margin-bottom:16px">
     <div style="font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Welcome back</div>
     <div style="font-size:14px;font-weight:500;margin-bottom:6px" id="taste-headline">Your music is ready</div>
@@ -507,12 +522,19 @@
     <div id="history-list" style="display:flex;flex-direction:column;gap:8px"></div>
     <div id="history-empty" style="font-size:13px;color:var(--muted2);padding:16px 0">No sessions yet — generate your first music above.</div>
   </div>
-  <!-- Profile section (shown when clicking My Profile) -->
+
+  <!-- Profile section -->
   <div id="profile-section" style="display:none;margin-top:8px">
     <div class="card" id="profile-content"></div>
   </div>
 
 </main>
+
+<!-- Server status indicator -->
+<div class="server-status" id="server-status">
+  <div class="status-dot" id="status-dot"></div>
+  <span id="status-text">Checking server...</span>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -525,6 +547,34 @@
   let selectedReaction = null;
   let selectedRating   = null;
   let listenStart      = null;
+
+  // ── Server keep-alive & status check ─────────────────────
+  async function checkServerStatus() {
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    dot.className  = 'status-dot waking';
+    text.textContent = 'Waking server...';
+    try {
+      const res = await fetch(`${API}/`, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) {
+        dot.className  = 'status-dot online';
+        text.textContent = 'Server online';
+        setTimeout(() => {
+          document.getElementById('server-status').style.opacity = '0.4';
+        }, 3000);
+      } else { throw new Error(); }
+    } catch {
+      dot.className  = 'status-dot offline';
+      text.textContent = 'Server offline — retrying...';
+      setTimeout(checkServerStatus, 15000);
+    }
+  }
+
+  // Ping every 10 minutes to prevent Render from sleeping
+  checkServerStatus();
+  setInterval(() => {
+    fetch(`${API}/`).catch(() => {});
+  }, 10 * 60 * 1000);
 
   // ── Auth ─────────────────────────────────────────────────
   function googleLogin() {
@@ -617,7 +667,7 @@
       await loadAudio(data.session_id, data.mood_tag, data.bpm, 'describe');
     } catch (e) {
       showError('describe-error', e.message.includes('Failed to fetch')
-        ? 'Cannot reach server. Is uvicorn running on localhost:8000?'
+        ? 'Server is waking up — please wait 30 seconds and try again.'
         : e.message);
     } finally { setLoading('describe', false); }
   }
@@ -638,7 +688,7 @@
       await loadAudio(data.session_id, data.mood_tag, data.bpm, 'quick');
     } catch (e) {
       showError('quick-error', e.message.includes('Failed to fetch')
-        ? 'Cannot reach server. Is uvicorn running on https://focustune.onrender.com?'
+        ? 'Server is waking up — please wait 30 seconds and try again.'
         : e.message);
     } finally { setLoading('quick', false); }
   }
@@ -767,10 +817,9 @@
 
   renderHistory();
 
-  // ── Taste recovery — runs on every page load ─────────────
+  // ── Taste recovery ───────────────────────────────────────
   function loadTasteBanner() {
     if (!sessionHistory.length) return;
-
     const moodCounts = {};
     const moodBpms   = {};
     sessionHistory.forEach(s => {
@@ -778,13 +827,10 @@
       moodCounts[s.moodTag] = (moodCounts[s.moodTag] || 0) + 1;
       moodBpms[s.moodTag]   = s.bpm;
     });
-
     const topMood = Object.entries(moodCounts).sort((a,b) => b[1]-a[1])[0];
     if (!topMood) return;
-
     const [moodTag, count] = topMood;
     const bpm = moodBpms[moodTag] || 60;
-
     const moodToVibe = {
       'deep_focus':    'ultra_focus',
       'exam_crunch':   'exam_crunch',
@@ -794,10 +840,8 @@
       'memory_mode':   'memory_mode',
     };
     window._tasteBannerVibe = moodToVibe[moodTag] || 'ultra_focus';
-
     document.getElementById('taste-headline').textContent =
       `Based on your history — ${formatMoodTag(moodTag)} suits you best`;
-
     const chips = [
       { label: `${bpm} BPM`,                          color:'rgba(124,106,255,0.15)', text:'#a89fff' },
       { label: `${count} session${count>1?'s':''}`,   color:'rgba(0,217,163,0.1)',    text:'var(--accent3)' },
@@ -806,7 +850,6 @@
     document.getElementById('taste-chips').innerHTML = chips.map(c =>
       `<span style="font-size:12px;padding:4px 11px;border-radius:10px;background:${c.color};color:${c.text};font-weight:500">${c.label}</span>`
     ).join('');
-
     document.getElementById('taste-banner').style.display = 'block';
   }
 
@@ -820,6 +863,8 @@
   }
 
   loadTasteBanner();
+
+  // ── Profile ──────────────────────────────────────────────
   async function loadProfile() {
     const profileSection = document.getElementById('profile-section');
     if (profileSection.style.display === 'block') {

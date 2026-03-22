@@ -16,8 +16,8 @@ import json
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "581762105920-kp7d9an7gbui9pld6fbqs3kqt8r05cq1.apps.googleusercontent.com")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "****tMgG")
 GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "http://localhost:8000/auth/google/callback")
 JWT_SECRET           = os.getenv("JWT_SECRET", "focustune-dev-secret-change-in-production")
 JWT_ALGORITHM        = "HS256"

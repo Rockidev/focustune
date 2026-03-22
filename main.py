@@ -24,8 +24,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         os.getenv("FRONTEND_URL", "http://localhost:3000"),
+        "https://ubiquitous-platypus-147a73.netlify.app",
+        "https://69c021d5fd19e248d18ecde8--ubiquitous-platypus-147a73.netlify.app",
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://localhost:8000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -33,7 +36,7 @@ app.add_middleware(
 )
 
 app.include_router(Auth.router)
-app.include_router( music_routes.router)
+app.include_router(music_routes.router)
 app.include_router(feedback.router)
 app.include_router(Profile.router)
 

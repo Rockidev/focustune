@@ -34,7 +34,6 @@ def create_jwt(user_id: str) -> str:
 
 
 def get_current_user_id(token: str) -> str:
-    """Decode JWT and return user_id. Raises if invalid."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload["sub"]
@@ -49,7 +48,7 @@ def google_login():
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(
             status_code=500,
-            detail="GOOGLE_CLIENT_ID not set in .env — add it and restart uvicorn"
+            detail="GOOGLE_CLIENT_ID not set in .env"
         )
     from urllib.parse import urlencode
     params = urlencode({
@@ -100,9 +99,7 @@ async def google_callback(code: str, db: Session = Depends(get_db)):
         db.refresh(user)
 
     token = create_jwt(user.id)
-
-
-return RedirectResponse(f"{FRONTEND_URL}/index.html?token={token}")
+    return RedirectResponse(f"{FRONTEND_URL}/index.html?token={token}")
 
 
 # ── Spotify OAuth ─────────────────────────────────────────
@@ -122,8 +119,6 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
 
     taste = await get_spotify_taste(access_token)
 
-    # NOTE: In production attach this to the logged-in user via JWT cookie
-    # For now we update the first user found (dev mode)
     user = db.query(User).first()
     if user:
         user.spotify_access_token  = access_token
@@ -132,4 +127,4 @@ async def spotify_callback(code: str, db: Session = Depends(get_db)):
         user.spotify_taste         = json.dumps(taste)
         db.commit()
 
-    return RedirectResponse(f"{FRONTEND_URL}/settings?spotify=connected")
+    return RedirectResponse(f"{FRONTEND_URL}/index.html?spotify=connected")

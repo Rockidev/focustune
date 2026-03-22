@@ -638,7 +638,7 @@
       await loadAudio(data.session_id, data.mood_tag, data.bpm, 'quick');
     } catch (e) {
       showError('quick-error', e.message.includes('Failed to fetch')
-        ? 'Cannot reach server. Is uvicorn running on localhost:8000?'
+        ? 'Cannot reach server. Is uvicorn running on https://focustune.onrender.com?'
         : e.message);
     } finally { setLoading('quick', false); }
   }

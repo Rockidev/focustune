@@ -1,8 +1,11 @@
 import uuid
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from typing import Optional
+import jwt
+import os
 
 from Database import get_db, User, StudySession, LearnedPrefs
 from schemes import DescribeRequest, QuickRequest, MoodResponse
@@ -10,6 +13,24 @@ from claude import analyze_description
 from music import mood_to_musicgen_prompt, get_preset, generate_audio
 
 router = APIRouter(prefix="/music", tags=["music"])
+
+JWT_SECRET    = os.getenv("JWT_SECRET", "focustune-dev-secret-change-in-production")
+JWT_ALGORITHM = "HS256"
+
+
+def get_current_user(authorization: Optional[str] = Header(None), db: Session = Depends(get_db)):
+    """Get logged in user from JWT token. Returns None if not logged in."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        return db.query(User).filter(User.id == user_id).first()
+    except Exception:
+        return None
 
 
 def _get_learned_prefs_dict(db, user_id, mood_tag):
@@ -40,8 +61,12 @@ def _get_spotify_taste(user):
 
 
 @router.post("/describe", response_model=MoodResponse)
-async def describe_to_music(req: DescribeRequest, db: Session = Depends(get_db)):
-    user = db.query(User).first()
+async def describe_to_music(
+    req: DescribeRequest,
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(None),
+):
+    user = get_current_user(authorization, db)
     spotify_taste = _get_spotify_taste(user)
 
     mood_data = await analyze_description(
@@ -90,8 +115,12 @@ async def describe_to_music(req: DescribeRequest, db: Session = Depends(get_db))
 
 
 @router.post("/quick", response_model=MoodResponse)
-async def quick_music(req: QuickRequest, db: Session = Depends(get_db)):
-    user = db.query(User).first()
+async def quick_music(
+    req: QuickRequest,
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = Header(None),
+):
+    user = get_current_user(authorization, db)
     spotify_taste = _get_spotify_taste(user)
     preset = get_preset(req.vibe, spotify_taste=spotify_taste)
 

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import Optional
-import jwt
+from jose import jwt
 import os
 
 from Database import get_db, User, StudySession, LearnedPrefs
